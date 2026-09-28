@@ -1,7 +1,6 @@
 package com.buzzoff
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -31,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -230,11 +231,11 @@ private fun HomeScreen(
                     item(key = "pin") {
                         SetupCard(
                             Issue(
-                                "Set your PIN",
-                                "You'll need it to silence a category with \"I'm up\".",
-                                null,
+                                title = "Set your PIN",
+                                text = "You'll enter it when you tap \"I'm up\" to turn off the rest of a category's alarms.",
+                                intent = null,
+                                actionLabel = "Set PIN",
                             ),
-                            actionLabel = "Set PIN",
                             onAction = { settingPinFor = Category(-1, "") },
                         )
                     }
@@ -528,47 +529,62 @@ private fun AlarmRow(alarm: Alarm, now: Long, onClick: () -> Unit, onToggle: (Bo
     }
 }
 
-class Issue(val title: String, val text: String, val intent: Intent?)
+/** A setup problem shown as a card at the top of the home screen. */
+class Issue(
+    val title: String,
+    val text: String,
+    val intent: Intent?,
+    val actionLabel: String,
+    val steps: List<String> = emptyList(),
+)
 
-@SuppressLint("BatteryLife")
 private fun setupIssues(ctx: Context): List<Issue> {
     val pkg = "package:${ctx.packageName}".toUri()
     val issues = mutableListOf<Issue>()
     if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
         issues += Issue(
-            "Allow notifications",
-            "The alarm screen appears through a notification.",
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName),
+            title = "Notifications are off",
+            text = "BuzzOff shows the alarm screen through a notification. Without it, alarms may ring without showing anything.",
+            intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName),
+            actionLabel = "Turn on notifications",
         )
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !AlarmScheduler.canScheduleExact(ctx)) {
         issues += Issue(
-            "Allow exact alarms",
-            "Without it, alarms can't ring on time.",
-            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg),
+            title = "Alarms can't ring on time",
+            text = "BuzzOff needs permission to ring at the exact minute you set.",
+            intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg),
+            actionLabel = "Allow exact alarms",
         )
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
         !ctx.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
     ) {
         issues += Issue(
-            "Allow full-screen alarms",
-            "Needed to show the alarm over the lock screen.",
-            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg),
+            title = "Alarms won't show on the lock screen",
+            text = "Allow BuzzOff to show the alarm full screen while your phone is locked.",
+            intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg),
+            actionLabel = "Allow full-screen alarms",
         )
     }
     if (!ctx.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)) {
         issues += Issue(
-            "Turn off battery optimization",
-            "OnePlus phones stop background apps, which can silence alarms.",
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg),
+            title = "Your alarms might not ring",
+            text = "To save battery, your phone can stop BuzzOff in the background, and your alarms stop with it. Let BuzzOff run in the background:",
+            intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg),
+            actionLabel = "Open settings",
+            steps = listOf(
+                "Tap Open settings below",
+                "Tap Battery usage (or Battery)",
+                "Choose Allow background activity (or Unrestricted)",
+            ),
         )
     }
     return issues
 }
 
 @Composable
-private fun SetupCard(issue: Issue, actionLabel: String = "Fix", onAction: (() -> Unit)? = null) {
+private fun SetupCard(issue: Issue, onAction: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val action = onAction ?: {
         try {
@@ -582,19 +598,42 @@ private fun SetupCard(issue: Issue, actionLabel: String = "Fix", onAction: (() -
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = action),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (onAction == null) Icons.Filled.Warning else Icons.Filled.Lock,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                Text(issue.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(issue.text, style = MaterialTheme.typography.bodySmall)
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (onAction == null) Icons.Filled.Warning else Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    issue.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
             }
-            TextButton(onClick = action) { Text(actionLabel) }
+            Text(
+                issue.text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            issue.steps.forEachIndexed { i, step ->
+                Row(Modifier.padding(top = 6.dp)) {
+                    Text(
+                        "${i + 1}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.width(22.dp),
+                    )
+                    Text(step, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Button(
+                onClick = action,
+                modifier = Modifier.align(Alignment.End).padding(top = 10.dp),
+            ) { Text(issue.actionLabel) }
         }
     }
 }
