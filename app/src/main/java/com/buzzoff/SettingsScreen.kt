@@ -264,7 +264,7 @@ private fun MinutesDialog(title: String, initial: Int, onDismiss: () -> Unit, on
                 isError = text.isNotEmpty() && !valid,
                 shape = RoundedCornerShape(16.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (valid) onConfirm(minutes!!) }),
+                keyboardActions = KeyboardActions(onDone = { if (valid) onConfirm(minutes) }),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
             LaunchedEffect(Unit) { focus.requestFocus() }

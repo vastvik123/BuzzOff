@@ -33,7 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.IntentCompat
+import androidx.core.net.toUri
 import java.time.ZonedDateTime
 
 private val GAP_OPTIONS = listOf(2, 5, 10, 15)
@@ -370,13 +371,13 @@ fun SettingRow(title: String, value: String, onClick: () -> Unit) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
-        Icon(Icons.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 private fun ringtoneTitle(ctx: Context, uri: String?): String {
     if (uri == null) return "Default alarm sound"
-    return runCatching { RingtoneManager.getRingtone(ctx, Uri.parse(uri))?.getTitle(ctx) }.getOrNull()
+    return runCatching { RingtoneManager.getRingtone(ctx, uri.toUri())?.getTitle(ctx) }.getOrNull()
         ?: "Custom sound"
 }
 

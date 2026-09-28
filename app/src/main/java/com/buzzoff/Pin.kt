@@ -1,6 +1,7 @@
 package com.buzzoff
 
 import android.content.Context
+import androidx.core.content.edit
 import android.util.Base64
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -14,10 +15,10 @@ object Pin {
 
     fun set(ctx: Context, pin: String) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
-        prefs(ctx).edit()
-            .putString("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString("hash", hash(salt, pin))
-            .apply()
+        prefs(ctx).edit {
+            putString("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
+            putString("hash", hash(salt, pin))
+        }
     }
 
     fun check(ctx: Context, pin: String): Boolean {

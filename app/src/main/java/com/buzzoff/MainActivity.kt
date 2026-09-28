@@ -7,7 +7,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -81,6 +80,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -457,12 +457,10 @@ private fun SwipeableAlarmRow(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) onDelete()
-            it == SwipeToDismissBoxValue.EndToStart
-        },
-    )
+    val state = rememberSwipeToDismissBoxState()
+    LaunchedEffect(state.currentValue) {
+        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) onDelete()
+    }
     SwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,
@@ -534,7 +532,7 @@ class Issue(val title: String, val text: String, val intent: Intent?)
 
 @SuppressLint("BatteryLife")
 private fun setupIssues(ctx: Context): List<Issue> {
-    val pkg = Uri.parse("package:${ctx.packageName}")
+    val pkg = "package:${ctx.packageName}".toUri()
     val issues = mutableListOf<Issue>()
     if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
         issues += Issue(
@@ -577,7 +575,7 @@ private fun SetupCard(issue: Issue, actionLabel: String = "Fix", onAction: (() -
             ctx.startActivity(issue.intent)
         } catch (e: ActivityNotFoundException) {
             ctx.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${ctx.packageName}".toUri())
             )
         }
     }

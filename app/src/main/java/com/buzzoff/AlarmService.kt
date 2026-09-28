@@ -23,7 +23,12 @@ import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 
 /** Foreground service that plays the alarm sound and shows the full-screen alarm. */
@@ -35,11 +40,16 @@ class AlarmService : Service() {
         /** Alarm id used by the "Test alarm" button in Settings. */
         const val TEST_ALARM_ID = 0
         private const val CHANNEL_ID = "ringing"
+        /** Used while the ringing screen is open, so no banner covers it. */
+        private const val QUIET_CHANNEL_ID = "ringing_quiet"
         private const val NOTIFICATION_ID = 1
         private const val RAMP_STEPS = 30 // One step per second.
 
         /** Id of the alarm ringing right now, or null when silent. */
         val ringingAlarmId = MutableStateFlow<Int?>(null)
+
+        /** Set by [RingingActivity] while it is on screen. */
+        val ringingScreenVisible = MutableStateFlow(false)
 
         fun intent(ctx: Context, action: String, alarmId: Int = 0): Intent =
             Intent(ctx, AlarmService::class.java)
@@ -47,6 +57,8 @@ class AlarmService : Service() {
                 .putExtra(AlarmScheduler.EXTRA_ALARM_ID, alarmId)
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var currentAlarm: Alarm? = null
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -63,6 +75,19 @@ class AlarmService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        // Swap the notification between the banner and quiet channels as the ringing screen shows and hides.
+        scope.launch {
+            ringingScreenVisible.collect { visible ->
+                if (ringingAlarmId.value != null) {
+                    getSystemService(NotificationManager::class.java)
+                        .notify(NOTIFICATION_ID, buildNotification(currentAlarm, quiet = visible))
+                }
+            }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_RING -> ring(intent.getIntExtra(AlarmScheduler.EXTRA_ALARM_ID, 0))
@@ -76,15 +101,17 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        scope.cancel()
         release()
         super.onDestroy()
     }
 
     private fun ring(alarmId: Int) {
         val alarm = AlarmStore.get(this, alarmId)
+        currentAlarm = alarm
         ringingAlarmId.value = alarmId
         ServiceCompat.startForeground(
-            this, NOTIFICATION_ID, buildNotification(alarm),
+            this, NOTIFICATION_ID, buildNotification(alarm, quiet = ringingScreenVisible.value),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
         if (player == null) startSound(alarm?.ringtone)
@@ -158,14 +185,15 @@ class AlarmService : Service() {
         vibrator = v
     }
 
-    private fun buildNotification(alarm: Alarm?): Notification {
-        val channel = NotificationChannel(
-            CHANNEL_ID, "Ringing alarm", NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            setSound(null, null) // The service plays the sound itself.
-            enableVibration(false)
+    private fun buildNotification(alarm: Alarm?, quiet: Boolean): Notification {
+        val channels = listOf(
+            NotificationChannel(CHANNEL_ID, "Ringing alarm", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(QUIET_CHANNEL_ID, "Ringing alarm (screen open)", NotificationManager.IMPORTANCE_LOW),
+        ).onEach {
+            it.setSound(null, null) // The service plays the sound itself.
+            it.enableVibration(false)
         }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        getSystemService(NotificationManager::class.java).createNotificationChannels(channels)
 
         val fullScreen = PendingIntent.getActivity(
             this, 0,
@@ -181,7 +209,7 @@ class AlarmService : Service() {
             ?: alarm?.let { AlarmStore.category(this, it.categoryId)?.name }
             ?: "BuzzOff"
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, if (quiet) QUIET_CHANNEL_ID else CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_bell)
             .setColor(getColor(R.color.brand_violet))
             .setContentTitle(title)
@@ -190,7 +218,8 @@ class AlarmService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
-            .setFullScreenIntent(fullScreen, true)
+            .setOnlyAlertOnce(true)
+            .apply { if (!quiet) setFullScreenIntent(fullScreen, true) }
             .setContentIntent(fullScreen)
             .addAction(0, "Snooze", serviceAction(ACTION_SNOOZE, 1))
             .addAction(0, "Dismiss", serviceAction(ACTION_DISMISS, 2))

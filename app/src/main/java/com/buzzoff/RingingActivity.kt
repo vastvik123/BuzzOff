@@ -73,6 +73,16 @@ class RingingActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent { BuzzOffTheme { RingingScreen(onDone = ::finish) } }
     }
+
+    override fun onStart() {
+        super.onStart()
+        AlarmService.ringingScreenVisible.value = true
+    }
+
+    override fun onStop() {
+        AlarmService.ringingScreenVisible.value = false
+        super.onStop()
+    }
 }
 
 @Composable

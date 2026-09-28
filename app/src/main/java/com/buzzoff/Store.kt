@@ -1,6 +1,7 @@
 package com.buzzoff
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
@@ -56,7 +57,7 @@ object AlarmStore {
         load(ctx)
         val sorted = alarms.sortedWith(compareBy({ it.hour }, { it.minute }, { it.id }))
         _alarms.value = sorted
-        prefs(ctx).edit().putString(KEY_ALARMS, alarmsToJson(sorted)).apply()
+        prefs(ctx).edit { putString(KEY_ALARMS, alarmsToJson(sorted)) }
     }
 
     fun upsert(ctx: Context, alarm: Alarm) = save(ctx, all(ctx).filter { it.id != alarm.id } + alarm)
@@ -89,7 +90,7 @@ object AlarmStore {
     @Synchronized
     private fun saveCategories(ctx: Context, categories: List<Category>) {
         _categories.value = categories
-        prefs(ctx).edit().putString(KEY_CATEGORIES, categoriesToJson(categories)).apply()
+        prefs(ctx).edit { putString(KEY_CATEGORIES, categoriesToJson(categories)) }
     }
 
     fun snooze(ctx: Context): Pair<Long, Int> {
@@ -99,7 +100,10 @@ object AlarmStore {
 
     fun setSnooze(ctx: Context, at: Long, alarmId: Int) {
         _snooze.value = at to alarmId
-        prefs(ctx).edit().putLong(KEY_SNOOZE_AT, at).putInt(KEY_SNOOZE_ALARM, alarmId).apply()
+        prefs(ctx).edit {
+            putLong(KEY_SNOOZE_AT, at)
+            putInt(KEY_SNOOZE_ALARM, alarmId)
+        }
     }
 
     private fun alarmsToJson(alarms: List<Alarm>): String = JSONArray().apply {
@@ -160,11 +164,11 @@ object Prefs {
         ctx.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     fun snoozeMinutes(ctx: Context) = prefs(ctx).getInt("snoozeMinutes", 5)
-    fun setSnoozeMinutes(ctx: Context, value: Int) = prefs(ctx).edit().putInt("snoozeMinutes", value).apply()
+    fun setSnoozeMinutes(ctx: Context, value: Int) = prefs(ctx).edit { putInt("snoozeMinutes", value) }
 
     fun autoStopMinutes(ctx: Context) = prefs(ctx).getInt("autoStopMinutes", 10)
-    fun setAutoStopMinutes(ctx: Context, value: Int) = prefs(ctx).edit().putInt("autoStopMinutes", value).apply()
+    fun setAutoStopMinutes(ctx: Context, value: Int) = prefs(ctx).edit { putInt("autoStopMinutes", value) }
 
     fun rampVolume(ctx: Context) = prefs(ctx).getBoolean("rampVolume", true)
-    fun setRampVolume(ctx: Context, value: Boolean) = prefs(ctx).edit().putBoolean("rampVolume", value).apply()
+    fun setRampVolume(ctx: Context, value: Boolean) = prefs(ctx).edit { putBoolean("rampVolume", value) }
 }
