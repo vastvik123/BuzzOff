@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.buzzoff.app"
+        applicationId = "com.dopplertechnologies.buzzoff"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
