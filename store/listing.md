@@ -55,7 +55,7 @@ Tip: on some phones (such as OnePlus, Oppo, Xiaomi and Samsung), allow BuzzOff t
 |---|---|
 | App icon (512 × 512) | `store/graphics/icon-512.png` |
 | Feature graphic (1024 × 500) | `store/graphics/feature-1024x500.png` |
-| Phone screenshots (2–8) | `store/graphics/screenshot-*.png` |
+| Phone screenshots (5, 1080 × 1920, in this order) | `store/graphics/screenshot-1.png` … `screenshot-5.png` |
 
 ## Store settings
 

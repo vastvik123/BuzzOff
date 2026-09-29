@@ -34,6 +34,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs next to the Play Store version as "BuzzOff Dev".
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
