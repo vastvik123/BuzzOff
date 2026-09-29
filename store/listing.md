@@ -5,7 +5,7 @@ Paste these into **Play Console › Grow users › Store presence › Main store
 ## App name (30 characters max)
 
 ```
-BuzzOff: Multi Alarm Clock
+BuzzOff
 ```
 
 ## Short description (80 characters max)

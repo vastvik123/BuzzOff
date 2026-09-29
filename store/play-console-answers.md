@@ -11,7 +11,7 @@ everything on the device.
 
 | Question | Answer |
 |---|---|
-| App name | BuzzOff: Multi Alarm Clock |
+| App name | BuzzOff |
 | Default language | English (United States) – en-US |
 | App or game | App |
 | Free or paid | Free |
